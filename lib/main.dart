@@ -29,6 +29,60 @@ class Pet extends StatefulWidget {
 }
 
 class _PetState extends State<Pet> {
+  int _happiness = 0;
+  int _hunger = 0;
+  int _energy = 0;
+  bool _gameOver = false;
+  bool _hasWon = false;
+
+  int _clampMeter(int value) => value.clamp(0, 100).toInt();
+
+  void _feedPet() {
+    if (_gameOver || _hasWon) return;
+
+    final nextHunger = _clampMeter(_hunger - 10);
+    final happinessChange = nextHunger < 30 ? -20 : 10;
+    final nextHappiness = _clampMeter(_happiness + happinessChange);
+
+    setState(() {
+      _hunger = nextHunger;
+      _happiness = nextHappiness;
+    });
+    _updateOutcome();
+  }
+
+  void _playPet() {
+    if (_gameOver || _hasWon) return;
+
+    final nextHunger = _clampMeter(_hunger + 5);
+    final nextHappiness = _clampMeter(_happiness + 10);
+    final nextEnergy = _clampMeter(_energy - 10);
+
+    setState(() {
+      _hunger = nextHunger;
+      _happiness = nextHappiness;
+      _energy = nextEnergy;
+    });
+    _updateOutcome();
+  }
+
+  void _restPet() {
+    if (_gameOver || _hasWon) return;
+
+    final nextHunger = _clampMeter(_hunger + 5);
+    final nextEnergy = _clampMeter(_energy + 10);
+
+    setState(() {
+      _hunger = nextHunger;
+      _energy = nextEnergy;
+    });
+    _updateOutcome();
+  }
+
+  void _updateOutcome() {
+    if (_gameOver || _hasWon) return;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
