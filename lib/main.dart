@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'dart:async';
-import 'dart:math' show pi;
 
 void main() {
   runApp(const MyApp());
@@ -115,13 +114,26 @@ class _PetState extends State<Pet> {
     });
   }
 
-  String get _petMessage {
-    if (_gameOver) return 'I need a rest.';
-    if (_hasWon) return 'Best day ever!';
-    if (_hunger > 80) return "I'm starving!";
-    if (_happiness <= 30) return 'Play with me?';
-    if (_energy < 20) return 'So sleepy...';
-    return "Hi, I'm $_petName!";
+  ({String image, String message}) get _petMood {
+    if (_gameOver) {
+      return (image: 'dog_sleeping.png', message: 'I need a rest.');
+    }
+    if (_hasWon) {
+      return (image: 'dog_happy.png', message: 'Best day ever!');
+    }
+    if (_hunger > 80) {
+      return (image: 'dog_hungry.png', message: "I'm starving!");
+    }
+    if (_happiness <= 30) {
+      return (image: 'dog_sad.png', message: 'Play with me?');
+    }
+    if (_energy < 20) {
+      return (image: 'dog_sleeping.png', message: 'So sleepy...');
+    }
+    if (_happiness > 70) {
+      return (image: 'dog_happy.png', message: "I'm so happy!");
+    }
+    return (image: 'dog_idle.png', message: "Hi, I'm $_petName!");
   }
 
   double get _petScale => _happiness > 70
@@ -158,69 +170,110 @@ class _PetState extends State<Pet> {
     super.dispose();
   }
 
+  Widget _buildMeter(String label, int value) {
+    return Row(
+      children: [
+        SizedBox(width: 80, child: Text(label)),
+        Expanded(child: Slider(value: value / 100.0, onChanged: null)),
+        SizedBox(
+          width: 32,
+          child: Text(value.toString(), textAlign: TextAlign.end),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final mood = _petMood;
+    final petImage = 'assets/images/dog/${mood.image}';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pet Lab')),
-      body: Column(
-        children: [
-          AnimatedScale(
-            scale: _petScale,
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 180),
-            curve: Curves.easeOutBack,
-            child: Image.asset('assets/images/dog/dog_idle.png'),
+      appBar: AppBar(title: const Text('Pet Lab'), centerTitle: true),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AnimatedScale(
+                    scale: _petScale,
+                    duration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
+                    curve: Curves.easeOutBack,
+                    child: AnimatedSwitcher(
+                      duration: reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 250),
+                      child: Image.asset(
+                        petImage,
+                        key: ValueKey(petImage),
+                        width: 220,
+                        height: 220,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  AnimatedSwitcher(
+                    duration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 300),
+                    child: Text(
+                      mood.message,
+                      key: ValueKey(mood.message),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: _happiness / 100),
+                    duration: reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 400),
+                    curve: Curves.easeOut,
+                    builder: (context, value, _) =>
+                        LinearProgressIndicator(value: value),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildMeter('Hunger', _hunger),
+                  _buildMeter('Energy', _energy),
+                  _buildMeter('Happiness', _happiness),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _restPet,
+                        child: const Text('Rest'),
+                      ),
+                      ElevatedButton(
+                        onPressed: _playPet,
+                        child: const Text('Play'),
+                      ),
+                      ElevatedButton(
+                        onPressed: _feedPet,
+                        child: const Text('Feed'),
+                      ),
+                      ElevatedButton(
+                        onPressed: _resetPet,
+                        child: const Text('Reset'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-
-          AnimatedSwitcher(
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 300),
-            child: Text(_petMessage, key: ValueKey(_petMessage)),
-          ),
-
-          TweenAnimationBuilder<double>(
-            tween: Tween<double>(begin: 0, end: _happiness / 100),
-            duration: reduceMotion
-                ? Duration.zero
-                : const Duration(milliseconds: 400),
-            curve: Curves.easeOut,
-            builder: (context, value, _) =>
-                LinearProgressIndicator(value: value),
-          ),
-          Row(
-            children: [
-              Text('Hunger'),
-              Slider(value: _hunger / 100.0, onChanged: null),
-              Text(_hunger.toString()),
-            ],
-          ),
-          Row(
-            children: [
-              Text('Energy'),
-              Slider(value: _energy / 100.0, onChanged: null),
-              Text(_energy.toString()),
-            ],
-          ),
-          Row(
-            children: [
-              Text('Happiness'),
-              Slider(value: _happiness / 100.0, onChanged: null),
-              Text(_happiness.toString()),
-            ],
-          ),
-          Row(
-            children: [
-              ElevatedButton(onPressed: _restPet, child: Text('Rest')),
-              ElevatedButton(onPressed: _playPet, child: Text('Play')),
-              ElevatedButton(onPressed: _feedPet, child: Text('Feed')),
-              ElevatedButton(onPressed: _resetPet, child: Text('Reset')),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
