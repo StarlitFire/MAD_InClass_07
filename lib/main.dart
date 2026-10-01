@@ -87,7 +87,35 @@ class _PetState extends State<Pet> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Pet Lab')),
-      body: Column(),
+      body: Column(
+        children: [
+          Row(
+            children: [
+              Text('Hunger'),
+              Slider(value: _hunger / 100.0, onChanged: null),
+            ],
+          ),
+          Row(
+            children: [
+              Text('Energy'),
+              Slider(value: _energy / 100.0, onChanged: null),
+            ],
+          ),
+          Row(
+            children: [
+              Text('Happiness'),
+              Slider(value: _happiness / 100.0, onChanged: null),
+            ],
+          ),
+          Row(
+            children: [
+              ElevatedButton(onPressed: _restPet, child: Text('Rest')),
+              ElevatedButton(onPressed: _playPet, child: Text('Play')),
+              ElevatedButton(onPressed: _feedPet, child: Text('Feed')),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
