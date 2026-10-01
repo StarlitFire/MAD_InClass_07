@@ -87,7 +87,12 @@ class _PetState extends State<Pet> {
       _hunger = 50;
       _energy = 70;
       _happiness = 50;
+      _gameOver = false;
+      _hasWon = false;
+      _highMoodTimer?.cancel();
     });
+
+    _updateOutcome();
   }
 
   void _updateOutcome() {
@@ -106,7 +111,7 @@ class _PetState extends State<Pet> {
       return;
     }
 
-    _highMoodTimer ??= Timer(const Duration(minutes: 3), () {
+    _highMoodTimer ??= Timer(const Duration(seconds: 3), () {
       _highMoodTimer = null;
       if (!mounted || _gameOver || _happiness <= 80) return;
       setState(() => _hasWon = true);
