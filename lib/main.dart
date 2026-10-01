@@ -130,12 +130,6 @@ class _PetState extends State<Pet> {
       ? 0.94
       : 1.0;
 
-  Color get _moodColor {
-    if (_happiness > 70) return Colors.green;
-    if (_happiness >= 30) return Colors.yellow;
-    return Colors.red;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -178,10 +172,7 @@ class _PetState extends State<Pet> {
                 ? Duration.zero
                 : const Duration(milliseconds: 180),
             curve: Curves.easeOutBack,
-            child: ColorFiltered(
-              colorFilter: ColorFilter.mode(_moodColor, BlendMode.modulate),
-              child: Image.asset('assets/pet.png'),
-            ),
+            child: Image.asset('assets/images/dog/dog_idle.png'),
           ),
 
           AnimatedSwitcher(
