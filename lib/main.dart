@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'dart:async';
+import 'pet_game.dart';
 
 void main() {
   runApp(const MyApp());
@@ -22,156 +22,88 @@ class MyApp extends StatelessWidget {
 }
 
 class Pet extends StatefulWidget {
-  const Pet({super.key});
+  const Pet({super.key, this.game});
+
+  final PetGame? game;
 
   @override
   State<Pet> createState() => _PetState();
 }
 
 class _PetState extends State<Pet> {
-  int _happiness = 50;
-  int _hunger = 50;
-  int _energy = 70;
-  bool _gameOver = false;
-  bool _hasWon = false;
-  Timer? _hungerTimer;
-  Timer? _highMoodTimer;
-  final String _petName = 'Food';
+  late final PetGame _game;
+  late final TextEditingController _nameController;
 
-  int _clampMeter(int value) => value.clamp(0, 100).toInt();
-
-  void _feedPet() {
-    if (_gameOver || _hasWon) return;
-
-    final nextHunger = _clampMeter(_hunger - 10);
-    final happinessChange = nextHunger < 30 ? -20 : 10;
-    final nextHappiness = _clampMeter(_happiness + happinessChange);
-
-    setState(() {
-      _hunger = nextHunger;
-      _happiness = nextHappiness;
-    });
-    _updateOutcome();
+  void _onGameChanged() {
+    if (mounted) setState(() {});
   }
 
-  void _playPet() {
-    if (_gameOver || _hasWon) return;
-
-    final nextHunger = _clampMeter(_hunger + 5);
-    final nextHappiness = _clampMeter(_happiness + 10);
-    final nextEnergy = _clampMeter(_energy - 10);
-
-    setState(() {
-      _hunger = nextHunger;
-      _happiness = nextHappiness;
-      _energy = nextEnergy;
-    });
-    _updateOutcome();
-  }
-
-  void _restPet() {
-    if (_gameOver || _hasWon) return;
-
-    final nextHunger = _clampMeter(_hunger + 5);
-    final nextEnergy = _clampMeter(_energy + 10);
-
-    setState(() {
-      _hunger = nextHunger;
-      _energy = nextEnergy;
-    });
-    _updateOutcome();
-  }
-
-  void _resetPet() {
-    setState(() {
-      _hunger = 50;
-      _energy = 70;
-      _happiness = 50;
-      _gameOver = false;
-      _hasWon = false;
-      _highMoodTimer?.cancel();
-    });
-
-    _updateOutcome();
-  }
-
-  void _updateOutcome() {
-    if (_gameOver || _hasWon) return;
-
-    if (_hunger == 100 && _happiness <= 10) {
-      _highMoodTimer?.cancel();
-      _hungerTimer?.cancel();
-      setState(() => _gameOver = true);
+  void _confirmName() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Enter a pet name first.')));
       return;
     }
-
-    if (_happiness <= 80) {
-      _highMoodTimer?.cancel();
-      _highMoodTimer = null;
-      return;
-    }
-
-    _highMoodTimer ??= Timer(const Duration(minutes: 3), () {
-      _highMoodTimer = null;
-      if (!mounted || _gameOver || _happiness <= 80) return;
-      setState(() => _hasWon = true);
-      _hungerTimer?.cancel();
-    });
+    _game.rename(name);
+    FocusScope.of(context).unfocus();
   }
+
+  String get _moodLabel => switch (_game.mood) {
+    PetMood.unhappy => 'Unhappy',
+    PetMood.neutral => 'Neutral',
+    PetMood.happy => 'Happy',
+  };
+
+  Color get _moodColor => switch (_game.mood) {
+    PetMood.unhappy => Colors.red,
+    PetMood.neutral => Colors.yellow,
+    PetMood.happy => Colors.green,
+  };
 
   ({String image, String message}) get _petMood {
-    if (_gameOver) {
+    if (_game.outcome == PetOutcome.lost) {
       return (image: 'dog_sleeping.png', message: 'I need a rest.');
     }
-    if (_hasWon) {
+    if (_game.outcome == PetOutcome.won) {
       return (image: 'dog_happy.png', message: 'Best day ever!');
     }
-    if (_hunger > 80) {
+    if (_game.hunger > 80) {
       return (image: 'dog_hungry.png', message: "I'm starving!");
     }
-    if (_happiness <= 30) {
+    if (_game.mood == PetMood.unhappy) {
       return (image: 'dog_sad.png', message: 'Play with me?');
     }
-    if (_energy < 20) {
+    if (_game.energy < 20) {
       return (image: 'dog_sleeping.png', message: 'So sleepy...');
     }
-    if (_happiness > 70) {
+    if (_game.happiness > 70) {
       return (image: 'dog_happy.png', message: "I'm so happy!");
     }
-    return (image: 'dog_idle.png', message: "Hi, I'm $_petName!");
+    return (image: 'dog_idle.png', message: "Hi, I'm ${_game.name}");
   }
 
-  double get _petScale => _happiness > 70
+  double get _petScale => _game.happiness > 70
       ? 1.06
-      : _happiness < 30
+      : _game.happiness < 30
       ? 0.94
       : 1.0;
 
   @override
   void initState() {
     super.initState();
-    _hungerTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (!mounted || _gameOver || _hasWon) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        if (_hunger + 5 > 100) {
-          _hunger = 100;
-          _happiness = _clampMeter(_happiness - 20);
-        } else {
-          _hunger += 5;
-        }
-      });
-      _updateOutcome();
-    });
+    _game = widget.game ?? PetGame();
+    _nameController = TextEditingController(text: _game.name);
+    _game.addListener(_onGameChanged);
+    _game.start();
   }
 
   @override
   void dispose() {
-    _hungerTimer?.cancel();
-    _highMoodTimer?.cancel();
-    // _nameController.dispose();
+    _game.removeListener(_onGameChanged);
+    _game.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -206,6 +138,36 @@ class _PetState extends State<Pet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Text(
+                    _game.name,
+                    key: const ValueKey('pet-name'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _nameController,
+                          maxLength: 30,
+                          decoration: const InputDecoration(
+                            labelText: 'Pet name',
+                            border: OutlineInputBorder(),
+                            counterText: '',
+                          ),
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _confirmName(),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: _confirmName,
+                        child: const Text('Confirm'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   AnimatedScale(
                     scale: _petScale,
                     duration: reduceMotion
@@ -216,16 +178,59 @@ class _PetState extends State<Pet> {
                       duration: reduceMotion
                           ? Duration.zero
                           : const Duration(milliseconds: 250),
-                      child: Image.asset(
-                        petImage,
+                      child: ColorFiltered(
                         key: ValueKey(petImage),
-                        width: 220,
-                        height: 220,
-                        fit: BoxFit.contain,
+                        colorFilter: ColorFilter.mode(
+                          _moodColor,
+                          BlendMode.modulate,
+                        ),
+                        child: Image.asset(
+                          petImage,
+                          width: 220,
+                          height: 220,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
+                  Text(
+                    'Mood: $_moodLabel',
+                    key: const ValueKey('mood-label'),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  if (_game.isOver) ...[
+                    Semantics(
+                      liveRegion: true,
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              Text(
+                                _game.outcome == PetOutcome.won
+                                    ? 'You won!'
+                                    : 'Game over',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _game.outcome == PetOutcome.won
+                                    ? 'Happiness stayed above 80 for 3 minutes.'
+                                    : 'Hunger reached 100 and happiness fell to 10 or below.',
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              const Text('Press Reset to play again.'),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   AnimatedSwitcher(
                     duration: reduceMotion
                         ? Duration.zero
@@ -238,7 +243,7 @@ class _PetState extends State<Pet> {
                   ),
                   const SizedBox(height: 24),
                   TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0, end: _happiness / 100),
+                    tween: Tween<double>(begin: 0, end: _game.happiness / 100),
                     duration: reduceMotion
                         ? Duration.zero
                         : const Duration(milliseconds: 400),
@@ -247,9 +252,9 @@ class _PetState extends State<Pet> {
                         LinearProgressIndicator(value: value),
                   ),
                   const SizedBox(height: 16),
-                  _buildMeter('Hunger', _hunger),
-                  _buildMeter('Energy', _energy),
-                  _buildMeter('Happiness', _happiness),
+                  _buildMeter('Hunger', _game.hunger),
+                  _buildMeter('Energy', _game.energy),
+                  _buildMeter('Happiness', _game.happiness),
                   const SizedBox(height: 16),
                   Wrap(
                     alignment: WrapAlignment.center,
@@ -257,19 +262,19 @@ class _PetState extends State<Pet> {
                     runSpacing: 12,
                     children: [
                       ElevatedButton(
-                        onPressed: _restPet,
+                        onPressed: _game.isOver ? null : _game.rest,
                         child: const Text('Rest'),
                       ),
                       ElevatedButton(
-                        onPressed: _playPet,
+                        onPressed: _game.isOver ? null : _game.play,
                         child: const Text('Play'),
                       ),
                       ElevatedButton(
-                        onPressed: _feedPet,
+                        onPressed: _game.isOver ? null : _game.feed,
                         child: const Text('Feed'),
                       ),
                       ElevatedButton(
-                        onPressed: _resetPet,
+                        onPressed: _game.reset,
                         child: const Text('Reset'),
                       ),
                     ],
